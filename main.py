@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+import os
 import pickle
 import numpy as np
 
 app = FastAPI(title="Nigeria GDP Predictor")
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,39 +16,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load models with error handling
-try:
-    with open('models/nigeria_gdp_rf_enhanced_model.pkl', 'rb') as f:
-        rf_model = pickle.load(f)
-    with open('models/nigeria_gdp_linear_model.pkl', 'rb') as f:
-        linear_model = pickle.load(f)
-    with open('models/nigeria_gdp_X_scaler.pkl', 'rb') as f:
-        X_scaler = pickle.load(f)
-    with open('models/nigeria_gdp_y_scaler.pkl', 'rb') as f:
-        y_scaler = pickle.load(f)
-    print("Models loaded successfully!")
-except Exception as e:
-    print(f"Error loading models: {str(e)}")
-    rf_model, linear_model, X_scaler, y_scaler = None, None, None, None
+# Model loading with absolute paths
+MODEL_DIR = os.path.join(os.getcwd(), "models")
+
+def load_models():
+    try:
+        models = {}
+        models['rf'] = pickle.load(open(os.path.join(MODEL_DIR, 'nigeria_gdp_rf_enhanced_model.pkl'), 'rb'))
+        models['x_scaler'] = pickle.load(open(os.path.join(MODEL_DIR, 'nigeria_gdp_X_scaler.pkl'), 'rb'))
+        models['y_scaler'] = pickle.load(open(os.path.join(MODEL_DIR, 'nigeria_gdp_y_scaler.pkl'), 'rb'))
+        return models
+    except Exception as e:
+        print(f"Error loading models: {str(e)}")
+        return None
+
+MODELS = load_models()
 
 class GDPPredictionInput(BaseModel):
     year: int = Field(..., ge=2024, le=2050)
 
 @app.get("/")
 def read_root():
-    return {"message": "Nigeria GDP Prediction API"}
+    return {
+        "message": "Nigeria GDP Prediction API",
+        "models_loaded": MODELS is not None
+    }
 
 @app.post("/predict")
 def predict(data: GDPPredictionInput):
-    if not all([rf_model, X_scaler, y_scaler]):
-        raise HTTPException(status_code=500, detail="Models not properly loaded")
+    if not MODELS:
+        # Fallback prediction if models fail to load
+        base_gdp = 2000
+        years_from_2024 = data.year - 2024
+        return {
+            "year": data.year,
+            "predicted_gdp": base_gdp + (years_from_2024 * 100),
+            "note": "Using fallback prediction (models not loaded)"
+        }
     
     try:
         year = np.array([[data.year]])
-        year_scaled = X_scaler.transform(year)
-        
-        prediction = rf_model.predict(year_scaled)
-        final_prediction = y_scaler.inverse_transform(prediction.reshape(-1, 1))
+        year_scaled = MODELS['x_scaler'].transform(year)
+        prediction = MODELS['rf'].predict(year_scaled.reshape(1, -1))
+        final_prediction = MODELS['y_scaler'].inverse_transform(prediction.reshape(-1, 1))
         
         return {
             "year": data.year,
