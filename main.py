@@ -1,14 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+import pickle
 import numpy as np
 
-app = FastAPI(
-    title="Nigeria Economic Predictor",
-    description="Predicts GDP based on multiple economic indicators",
-    version="1.0.0"
-)
+app = FastAPI(title="Nigeria GDP Predictor")
 
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,26 +15,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class PredictionInput(BaseModel):
+# Load models with error handling
+try:
+    with open('models/nigeria_gdp_rf_enhanced_model.pkl', 'rb') as f:
+        rf_model = pickle.load(f)
+    with open('models/nigeria_gdp_linear_model.pkl', 'rb') as f:
+        linear_model = pickle.load(f)
+    with open('models/nigeria_gdp_X_scaler.pkl', 'rb') as f:
+        X_scaler = pickle.load(f)
+    with open('models/nigeria_gdp_y_scaler.pkl', 'rb') as f:
+        y_scaler = pickle.load(f)
+    print("Models loaded successfully!")
+except Exception as e:
+    print(f"Error loading models: {str(e)}")
+    rf_model, linear_model, X_scaler, y_scaler = None, None, None, None
+
+class GDPPredictionInput(BaseModel):
     year: int = Field(..., ge=2024, le=2050)
-    population_growth: float = Field(..., ge=-5, le=10)
-    agricultural_land_percent: float = Field(..., ge=0, le=100)
-    literacy_rate: float = Field(..., ge=0, le=100)
-    oil_price: float = Field(..., ge=0, le=200)
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to Nigeria Economic Predictor API"}
+    return {"message": "Nigeria GDP Prediction API"}
 
-@app.post('/predict')
-def predict(data: PredictionInput):
+@app.post("/predict")
+def predict(data: GDPPredictionInput):
+    if not all([rf_model, X_scaler, y_scaler]):
+        raise HTTPException(status_code=500, detail="Models not properly loaded")
+    
     try:
-        # Temporary mock prediction
-        mock_gdp = 2500 + (data.year - 2024) * 100
+        year = np.array([[data.year]])
+        year_scaled = X_scaler.transform(year)
+        
+        prediction = rf_model.predict(year_scaled)
+        final_prediction = y_scaler.inverse_transform(prediction.reshape(-1, 1))
+        
         return {
-            "predicted_gdp": mock_gdp,
-            "input_data": data.dict(),
-            "note": "This is a mock prediction for testing"
+            "year": data.year,
+            "predicted_gdp": float(final_prediction[0][0])
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
