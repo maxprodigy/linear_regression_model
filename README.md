@@ -66,7 +66,7 @@ A machine learning project that predicts Nigeria's GDP Per Capita using Linear R
 
 ## Demo Video
 
-[Link to YouTube Demo]((https://youtu.be/ER-fepmiVhM))
+[Link to YouTube Demo](https://youtu.be/ER-fepmiVhM)
 
 ## API Usage
 
