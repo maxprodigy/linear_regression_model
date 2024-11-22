@@ -48,7 +48,7 @@ A machine learning project that predicts Nigeria's GDP Per Capita using Linear R
 2. Installation:
    ```bash
    # Clone the repository
-   git clone [[your-repo-url]](https://github.com/maxprodigy/linear_regression_model.git)
+   git clone https://github.com/maxprodigy/linear_regression_model.git
    cd linear_regression_model.git
    # Install dependencies
    flutter pub get
