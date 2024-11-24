@@ -8,7 +8,8 @@ A machine learning project that predicts Nigeria's GDP Per Capita using Linear R
 1. **Machine Learning Models**
    - Linear Regression Model
    - Random Forest Model
-   - Data source: World Bank Nigeria Statistics (2000-2020)
+   - Data source: World Bank Nigeria Statistics (2000-2020) [Link](https://www.kaggle.com/datasets/mutindafestus/world-statistics-dataset-from-world-bank)
+   - Extracted Nigerian Dataset With Python [Link](https://docs.google.com/spreadsheets/d/1XbH2jp8tDylk2nGXRoy7xrtd0Es0BUkLvYvuNHRn2BM/edit?usp=sharing)
    - Features: Year
    - Target: GDP Per Capita (USD)
 
